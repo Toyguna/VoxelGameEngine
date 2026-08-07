@@ -56,8 +56,6 @@ public class WorldGenerator
         return chunk;
     }
 
-  
-
     private void DefaultSurfaceChunkGeneration(int cx, int cz, World world)
     {
         Vector3 chunkWorldOrigin = new Vector3(cx, 0, cz) * 16;
@@ -86,23 +84,23 @@ public class WorldGenerator
                 );
 
 
-                BasicTileData tileData = TileDataRange(tileY);
-                WorldBasicTile tile = new WorldBasicTile(tileData, worldPos);
+                TileData tileData = TileDataRange(tileY);
+                WorldTile tile = new WorldTile(tileData, worldPos);
 
                 if (tileY < 0)
                 {
                     belowChunk = world.GetChunkAtGrid(cx, - 1, cz);
-                    belowChunk.SetTile(tile);
+                    belowChunk.SetTileAtWorld(tile);
                 }
                 else
                 {
-                    chunk.SetTile(tile);
+                    chunk.SetTileAtWorld(tile);
                 }
             }
         }
         
-        world.UpdateChunkMesh(chunk, _meshBuffer);
-        world.UpdateChunkMesh(belowChunk, _meshBuffer);
+        chunk.GenerationCompleted = true;
+        if (belowChunk != null) belowChunk.GenerationCompleted = true;
     }
 
     private void FlatSurfaceChunkGeneration(int cx, int cz, World world)
@@ -129,7 +127,7 @@ public class WorldGenerator
                         (int)(z + chunkWorldOrigin.Z)  
                     );
 
-                    BasicTileData tileData = y switch
+                    TileData tileData = y switch
                     {
                         <= -10 => TileRegistry.WATER,
                         <= -3 => TileRegistry.STONE,
@@ -137,23 +135,23 @@ public class WorldGenerator
                         >= 0 => TileRegistry.GRASS
                     };
 
-                    WorldBasicTile tile = new WorldBasicTile(tileData, worldPos);
+                    WorldTile tile = new WorldTile(tileData, worldPos);
 
                     if (y < 0)
                     {
                         belowChunk = world.GetChunkAtGrid(cx, - 1, cz);
-                        belowChunk.SetTile(tile);
+                        belowChunk.SetTileAtWorld(tile);
                     }
                     else
                     {
-                        chunk.SetTile(tile);
+                        chunk.SetTileAtWorld(tile);
                     }
                 }
             }
         }
         
-        world.UpdateChunkMesh(chunk, _meshBuffer);
-        world.UpdateChunkMesh(belowChunk, _meshBuffer);
+        chunk.GenerationCompleted = true;
+        belowChunk.GenerationCompleted = true;
     }
 
     private void GenerateSurfaceChunk(int cx, int cz, World world)
@@ -168,14 +166,14 @@ public class WorldGenerator
         }
     }
 
-    private void GenerateSurfaceChunk(Vector3 cposition, World world)
+    private void GenerateSurfaceChunk(Vector3 gridPos, World world)
     {
-        GenerateSurfaceChunk((int)cposition.X, (int)cposition.Z, world);    
+        GenerateSurfaceChunk((int)gridPos.X, (int)gridPos.Z, world);    
     }
 
-    private BasicTileData TileDataRange(float y)
+    private TileData TileDataRange(float y)
     {
-        BasicTileData tileData;
+        TileData tileData;
 
         tileData = y switch
         {

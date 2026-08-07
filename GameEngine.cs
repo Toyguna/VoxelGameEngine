@@ -14,7 +14,6 @@ public class GameEngine : Game
     private Camera _camera;
     private WorldGenerator _worldGen;
     private World _world;
-    private BasicEffect _effect;
     private MeshBufferPool _meshBuffer;
 
     public int FrameRate { get; private set; } = 0;
@@ -25,6 +24,7 @@ public class GameEngine : Game
     private bool _epressed = false;
     private bool _altpressed = false;
     private bool _altlock = false;
+    private bool _m1pressed = false;
 
     public GameEngine()
     {
@@ -32,14 +32,6 @@ public class GameEngine : Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
-    }
-
-    private void CreateWorld()
-    {
-        _worldGen = new WorldGenerator();
-
-        _world = new World(GraphicsDevice);
-        _worldGen.GenerateNewWorld(WorldGenType.DEFAULT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
     }
 
     protected override void Initialize()
@@ -54,19 +46,10 @@ public class GameEngine : Game
         GraphicsDevice.SamplerStates[0] = SamplerState.PointClamp;
 
         _meshBuffer = new MeshBufferPool();
-        _gameRenderer = new GameRenderer(_meshBuffer);
-
+        _gameRenderer = new GameRenderer(GraphicsDevice, _meshBuffer);
         _camera = new Camera(GraphicsDevice);
-        _effect = new BasicEffect(GraphicsDevice)
-        {
-            VertexColorEnabled = true,
-            LightingEnabled = true
-        };
         
-        _effect.DirectionalLight0.Enabled = true;
-        _effect.DirectionalLight0.DiffuseColor = new Vector3(1f, 1f, 1f);
-        _effect.DirectionalLight0.Direction = new Vector3(-1.0f, -1.0f, -1.0f);
-
+        EffectHandler.Initialize(GraphicsDevice);
         TextureHandler.Initialize(GraphicsDevice);
         IdRegistry.Initialize();
         TileRegistry.Initialize();
@@ -80,16 +63,42 @@ public class GameEngine : Game
 
         TileRegistry.AddTexturesToTiles();
 
-        _effect.Texture = TextureHandler.TextureAtlas;
-        _effect.TextureEnabled = true;
+        EffectHandler.MainEffect.Texture = TextureHandler.TextureAtlas;
+        EffectHandler.MainEffect.TextureEnabled = true;
 
-        CreateWorld();
+        GenerateWorld();
     }
 
     protected override void Update(GameTime gameTime)
     {
-        float time = (float)gameTime.TotalGameTime.TotalSeconds;
+        if (IsActive && IsMouseInWindow())
+        {
+            IsMouseVisible = !_camera.LockMouse;
 
+            HandleInput(gameTime);
+
+            _camera.Update(gameTime);
+            _world.Update(gameTime, _camera);
+        }
+
+        UpdateTitle();
+
+        base.Update(gameTime);
+    }
+
+    protected override void Draw(GameTime gameTime)
+    {
+        GraphicsDevice.Clear(Color.CornflowerBlue);
+        
+        CalculateFps(gameTime);
+
+        _gameRenderer.DrawWorld(_world, _camera);
+
+        base.Draw(gameTime);
+    }
+
+    private void HandleInput(GameTime gameTime)
+    {
         KeyboardState state = Keyboard.GetState();
         MouseState mouseState = Mouse.GetState();
 
@@ -120,14 +129,14 @@ public class GameEngine : Game
         if (state.IsKeyDown(Keys.E) && !_epressed)
         {
             _epressed = true;
-            if (!_effect.LightingEnabled)
+            if (!EffectHandler.MainEffect.LightingEnabled)
             {
-                _effect.LightingEnabled = true;
+                EffectHandler.MainEffect.LightingEnabled = true;
                 Console.WriteLine("Lighting enabled.");
             }
             else
             {
-                _effect.LightingEnabled = false;
+                EffectHandler.MainEffect.LightingEnabled = false;
                 Console.WriteLine("Lighting disabled.");
             }
         }
@@ -159,39 +168,29 @@ public class GameEngine : Game
             _altpressed = false;
         }
 
-        // TODO: Add your update logic here
-
-        if (IsActive)
+        if (mouseState.LeftButton == ButtonState.Pressed && !_m1pressed)
         {
-            _camera.Update(gameTime);
+            _m1pressed = true;
 
-            IsMouseVisible = !_camera.LockMouse;
-        }    
-        
-        _effect.DirectionalLight0.DiffuseColor = new Vector3(1f, 1f, 1f);
+            Vector3? mwPos = _world.MouseToWorldPosition(mouseState.Position, _camera);
+            if (mwPos != null)
+            {
+                _world.DestroyTileAtWorld((Vector3)mwPos);
+            }
+        }
 
-        Vector3 camChunkLocalPos = _camera.GetChunkLocalPosition();
-        Vector3 camChunkGridPos = _camera.GetChunkGridPosition();
-
-        Window.Title = $"FPS: {FrameRate} | " +
-         $"Pos: ({_camera.Position.X:F2}, {_camera.Position.Y:F2}, {_camera.Position.Z:F2}) " +
-         $"Rot: ({_camera.Direction.X:F2}, {_camera.Direction.Y:F2}, {_camera.Direction.Z:F2}) | " +
-         $"Chunk Local: ({camChunkLocalPos.X}, {camChunkLocalPos.Y}, {camChunkLocalPos.Z}) " +
-         $"Chunk Grid: ({camChunkGridPos.X}, {camChunkGridPos.Y}, {camChunkGridPos.Z})";
-
-        base.Update(gameTime);
+        if (mouseState.LeftButton == ButtonState.Released)
+        {
+            _m1pressed = false;
+        }
     }
 
-    protected override void Draw(GameTime gameTime)
+    private void GenerateWorld()
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
-        
-        CalculateFps(gameTime);
+        _worldGen = new WorldGenerator();
 
-        // TODO: Add your drawing code here
-        _gameRenderer.DrawWorld(_world, _effect, _camera);
-
-        base.Draw(gameTime);
+        _world = new World(GraphicsDevice, _meshBuffer);
+        _worldGen.GenerateNewWorld(WorldGenType.DEFAULT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
     }
 
     private void CalculateFps(GameTime gameTime)
@@ -206,5 +205,28 @@ public class GameEngine : Game
             _frameCounter = 0;
             _elapsedTime -= TimeSpan.FromSeconds(1);
         }
+    }
+
+    private void UpdateTitle()
+    {
+        if (!IsActive)
+        {
+            Window.Title = "Voxel Engine (Window out of focus)";
+            return;
+        }
+
+        Vector3 camChunkLocalPos = _camera.GetChunkLocalPosition();
+        Vector3 camChunkGridPos = _camera.GetChunkGridPosition();
+
+        Window.Title = $"Voxel Engine | FPS: {FrameRate} | " +
+         $"Pos: ({_camera.Position.X:F2}, {_camera.Position.Y:F2}, {_camera.Position.Z:F2}) " +
+         $"Rot: ({_camera.Direction.X:F2}, {_camera.Direction.Y:F2}, {_camera.Direction.Z:F2}) | " +
+         $"Chunk Local: ({camChunkLocalPos.X}, {camChunkLocalPos.Y}, {camChunkLocalPos.Z}) " +
+         $"Chunk Grid: ({camChunkGridPos.X}, {camChunkGridPos.Y}, {camChunkGridPos.Z})";
+    }
+
+    private bool IsMouseInWindow()
+    {
+        return GraphicsDevice.Viewport.Bounds.Contains(Mouse.GetState().Position);
     }
 }

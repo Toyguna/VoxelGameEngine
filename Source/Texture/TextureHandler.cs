@@ -33,6 +33,11 @@ public static class TextureHandler
         CreateAtlas();
     }
 
+/// <summary>
+/// Gets the texture data in bytes from the atlas.
+/// </summary>
+/// <param name="index"></param>
+/// <returns><b>byte[]</b> of the texture's byte data.</returns>
     public static byte[] GetTextureFromAtlas(int index)
     {
         byte[] texture = new byte[TextureWidth * TextureHeight * BytePerPixel];
@@ -41,11 +46,22 @@ public static class TextureHandler
         return texture;
     }
 
+/// <summary>
+/// Converts the given grid coordinates on the atlas to the texture index.
+/// </summary>
+/// <param name="x"></param>
+/// <param name="y"></param>
+/// <returns><b>int</b> index of the texture in the grid coordinates.</returns>
     public static int ConvertGridToIndex(int x, int y)
     {
         return x + (y * TextureHeight);
     }
 
+/// <summary>
+/// Converts the given texture index to grid coordinates on the atlas.
+/// </summary>
+/// <param name="index"></param>
+/// <returns><b>Vector2</b> grid coordinates of the given index.</returns>
     public static Vector2 ConvertIndexToGrid(int index)
     {
         return new Vector2(
@@ -54,11 +70,21 @@ public static class TextureHandler
         );
     }
 
+/// <summary>
+/// Gets the texture name of the given texture index.
+/// </summary>
+/// <param name="index"></param>
+/// <returns><b>string</b> texture name of given index.</returns>
     public static string GetTextureNameFromIndex(int index)
     {
         return TextureIds[index];
     }
 
+/// <summary>
+/// Gets the texture index of the given texture name.
+/// </summary>
+/// <param name="name"></param>
+/// <returns><b>int</b> index of given texture name.</returns>
     public static int GetIndexFromTextureName(string name)
     {
         for (int x = 0; x < AtlasGridWidth; x++)
@@ -77,6 +103,10 @@ public static class TextureHandler
         return -1;
     }
 
+/// <summary>
+/// Creates a texture atlas from the found texture files.
+/// Exports the atlas if the flag <b>ATLAS_DEBUG</b> is set to true.
+/// </summary>
     public static void CreateAtlas()
     {
         Console.WriteLine("[TextureHandler] Creating Texture Atlas:");

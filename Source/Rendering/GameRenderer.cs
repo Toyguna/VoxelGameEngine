@@ -1,15 +1,21 @@
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace GameEngine3D;
 
 public class GameRenderer
 {
+    private GraphicsDevice _graphicsDevice;
     private MeshBufferPool _meshBuffer;
-
     private int lastChunkCount = 0;
 
-    public GameRenderer(MeshBufferPool meshBufferPool)
+    public BasicEffect MainEffect { get; set; }
+
+    public GameRenderer(GraphicsDevice gd, MeshBufferPool meshBufferPool)
     {
+        _graphicsDevice = gd;
         _meshBuffer = meshBufferPool;
 
         Initialize();
@@ -17,7 +23,6 @@ public class GameRenderer
 
     public void Initialize()
     {
-        
     }
 
     public void UpdateMeshes(World world)
@@ -29,17 +34,16 @@ public class GameRenderer
             foreach (var item in world.GetChunks())
             {
                 Chunk chunk = item.Value;
-                //if (chunk.MeshUpdated) continue;
 
-                world.UpdateChunkMesh(chunk, _meshBuffer);
+                world.UpdateChunkMesh(chunk);
             }
         }
 
         lastChunkCount = chunkCount;
     }
 
-    public void DrawWorld(World world, BasicEffect effect, Camera camera)
+    public void DrawWorld(World world, Camera camera)
     {
-        world.Draw(effect, camera);
+        world.Draw(camera);
     }
 }

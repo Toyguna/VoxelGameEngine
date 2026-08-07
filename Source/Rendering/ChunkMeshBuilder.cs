@@ -29,7 +29,7 @@ public class ChunkMeshBuilder
             {
                 for(int z = 0; z < chunk.ChunkSizeZ; z++)
                 {
-                    WorldBasicTile tile = chunk.GetTileAtLocal(x, y, z);
+                    WorldTile tile = chunk.GetTileAtLocal(x, y, z);
                     if (tile == null) continue;
                     
                     for (int faceIndex = 0; faceIndex < 6; faceIndex++)

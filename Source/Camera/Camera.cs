@@ -13,7 +13,7 @@ public class Camera
     public float FieldOfView { get; set; } = 70;
     public int RenderDistance { get; set; } = 10;
 
-    public Vector3 Position { get; set; } = new Vector3(0f, 1f, 5f);
+    public Vector3 Position { get; set; } = new Vector3(0f, 5f, 0f);
     public Vector3 Direction { get; set; } = Vector3.Forward;
     public Vector3 Target { get; set; } = Vector3.Zero;
 
@@ -28,7 +28,6 @@ public class Camera
     public Matrix WorldMatrix { get; set; }
 
     private float MoveSpeed = 5f;
-    private float RotationSpeed = 100f;
 
     private readonly float MAX_DRAW_LENGTH = 1000f;
     private readonly float NORMAL_SPEED = 15f;
@@ -55,30 +54,8 @@ public class Camera
         );
     }
 
-    public void CameraMovement(float deltaTime)
+    public void CameraRotation()
     {
-        KeyboardState state = Keyboard.GetState();
-
-        Vector3 forward = new Vector3(Direction.X, 0, Direction.Z);
-        forward.Normalize();
-
-        Vector3 right = Vector3.Cross(forward, Vector3.Up);
-        right.Normalize();
-
-        MoveSpeed = state.IsKeyDown(Keys.LeftShift) ? NORMAL_SPEED : FAST_SPEED; 
-
-        if (state.IsKeyDown(Keys.W)) Position += forward * MoveSpeed * deltaTime; 
-        if (state.IsKeyDown(Keys.S)) Position -= forward * MoveSpeed * deltaTime; 
-        if (state.IsKeyDown(Keys.D)) Position += right * MoveSpeed * deltaTime; 
-        if (state.IsKeyDown(Keys.A)) Position -= right * MoveSpeed * deltaTime;
-        if (state.IsKeyDown(Keys.Space)) Position += Vector3.Up * MoveSpeed * deltaTime;
-        if (state.IsKeyDown(Keys.LeftControl)) Position -= Vector3.Up * MoveSpeed * deltaTime;
-
-        if (state.IsKeyDown(Keys.Up)) Pitch += RotationSpeed * deltaTime;
-        if (state.IsKeyDown(Keys.Down)) Pitch -= RotationSpeed * deltaTime;
-        if (state.IsKeyDown(Keys.Right)) Yaw += RotationSpeed * deltaTime;
-        if (state.IsKeyDown(Keys.Left)) Yaw -= RotationSpeed * deltaTime;
-
         MouseState mouseState = Mouse.GetState();
 
         if (LockMouse)
@@ -101,7 +78,7 @@ public class Camera
                 Mouse.SetPosition(_graphicsDevice.Viewport.Width / 2, _graphicsDevice.Viewport.Height / 2);          
             }
         }
-        
+
         Pitch = Math.Clamp(Pitch, -89, 89);
         float radPitch = MathHelper.ToRadians(Pitch);
         float radYaw = MathHelper.ToRadians(Yaw);
@@ -115,11 +92,32 @@ public class Camera
         Direction = Vector3.Normalize(newDir);
     }
 
+    public void CameraMovement(float deltaTime)
+    {
+        KeyboardState state = Keyboard.GetState();
+
+        Vector3 forward = new Vector3(Direction.X, 0, Direction.Z);
+        forward.Normalize();
+
+        Vector3 right = Vector3.Cross(forward, Vector3.Up);
+        right.Normalize();
+
+        MoveSpeed = state.IsKeyDown(Keys.LeftShift) ? NORMAL_SPEED : FAST_SPEED; 
+
+        if (state.IsKeyDown(Keys.W)) Position += forward * MoveSpeed * deltaTime; 
+        if (state.IsKeyDown(Keys.S)) Position -= forward * MoveSpeed * deltaTime; 
+        if (state.IsKeyDown(Keys.D)) Position += right * MoveSpeed * deltaTime; 
+        if (state.IsKeyDown(Keys.A)) Position -= right * MoveSpeed * deltaTime;
+        if (state.IsKeyDown(Keys.Space)) Position += Vector3.Up * MoveSpeed * deltaTime;
+        if (state.IsKeyDown(Keys.LeftControl)) Position -= Vector3.Up * MoveSpeed * deltaTime;
+    }
+
     public void Update(GameTime gameTime)
     {
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         CameraMovement(deltaTime);
+        CameraRotation();
 
         Target = Position + Direction;
 
@@ -149,4 +147,5 @@ public class Camera
             Math.Abs((int)Math.Floor(Position.Z % 16))
         );
     }
+
 }

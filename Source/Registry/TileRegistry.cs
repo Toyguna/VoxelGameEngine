@@ -6,13 +6,13 @@ namespace GameEngine3D;
 
 public static class TileRegistry
 {
-    private static Dictionary<uint, BasicTileData> tileDict = new Dictionary<uint, BasicTileData>();
+    private static Dictionary<uint, TileData> tileDict = new Dictionary<uint, TileData>();
 
-    public static readonly BasicTileData WATER = RegisterTile(new Identifier("game", "water"));
-    public static readonly BasicTileData SAND = RegisterTile(new Identifier("game", "sand"));
-    public static readonly BasicTileData STONE = RegisterTile(new Identifier("game", "stone"));
-    public static readonly BasicTileData DIRT = RegisterTile(new Identifier("game", "dirt"));
-    public static readonly BasicTileData GRASS = RegisterTile(new Identifier("game", "grass"),
+    public static readonly TileData WATER = RegisterTile(new Identifier("game", "water"));
+    public static readonly TileData SAND = RegisterTile(new Identifier("game", "sand"));
+    public static readonly TileData STONE = RegisterTile(new Identifier("game", "stone"));
+    public static readonly TileData DIRT = RegisterTile(new Identifier("game", "dirt"));
+    public static readonly TileData GRASS = RegisterTile(new Identifier("game", "grass"),
         new TileModel(TileModelType.TEXTURE_PER_FACE)
         .SetFaceTextures(
             [TileModelFace.FRONT, TileModelFace.BACK, TileModelFace.RIGHT, TileModelFace.LEFT, TileModelFace.TOP, TileModelFace.BOTTOM],
@@ -25,9 +25,9 @@ public static class TileRegistry
         
     }
     
-    public static BasicTileData RegisterTile(Identifier id, TileModel model = null)
+    public static TileData RegisterTile(Identifier id, TileModel model = null)
     {
-        BasicTileData tileData = new BasicTileData(id, id.Path, model);
+        TileData tileData = new TileData(id, id.Path, model);
 
         int index = IdRegistry.GetIndexOfId(id);
 
@@ -40,7 +40,7 @@ public static class TileRegistry
 
     public static void AddTexturesToTiles()
     {
-        foreach (BasicTileData tileData in tileDict.Values)
+        foreach (TileData tileData in tileDict.Values)
         {
             tileData.GetTextureIndex();
         }
