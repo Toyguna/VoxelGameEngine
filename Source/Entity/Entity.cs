@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -9,14 +10,22 @@ public class Entity
     public Vector3 Rotation { get; set; }
 
     public EntityData Data { get; private set; }
+    
+    public World CurrentWorld { get; set; }
 
-    public Entity(Vector3 position, EntityData entityData)
+    public Entity(Vector3 position, EntityData entityData, World world)
     {
         Position = position;
         Data = entityData;
+        CurrentWorld = world;
     }
 
-    public void Draw(GraphicsDevice graphicsDevice, Camera camera)
+    public virtual void Update(GameTime gameTime)
+    {
+        
+    }
+
+    public virtual void Draw(GraphicsDevice graphicsDevice, Camera camera)
     {
         
     }

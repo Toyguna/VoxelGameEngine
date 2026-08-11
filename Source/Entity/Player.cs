@@ -1,55 +1,31 @@
 using System;
+using System.Security.Cryptography;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 namespace GameEngine3D;
 
-public class Player : Entity
+public class Player : PhysicsEntity
 {
-    public float MaxHealth { get; set; } = 100f;
-    public float Health { get; set; } = 100f;
-
-    public float WalkSpeed { get; set; } = 5f;
-    public float JumpVelocity { get; set; } = 6f;
-    public float Gravity { get; set; } = 15f;
-    public float MaxFallVel { get; set; } = -30f;
-    public Vector3 Velocity { get; set; } = Vector3.Zero;
-    public bool OnGround { get; set; } = false;
-    
-    public Vector3 HitboxSize { get; set; } = new Vector3(0.4f, 1.6f, 0.4f);
-
     public Model PlayerModel { get; private set; }
     public Camera PlayerCamera { get; set; }
-    public World CurrentWorld { get; set; }
 
     public Vector3 CameraOffset { get; set; } = new Vector3(0, 2, 2);
 
-    private GraphicsDevice _graphicsDevice;
-
-    private Vector3[] _directions =
-    {
-        Vector3.Forward,
-        Vector3.Backward,
-        Vector3.Right,
-        Vector3.Left
-    };
-
-    public Player(Camera playerCamera, World currentWorld, GraphicsDevice gd) : base(new Vector3(-1, 15, -1), null)
+    public Player(Camera playerCamera, World currentWorld) : base(new Vector3(-1, 15, -1), null, currentWorld)
     {
         PlayerCamera = playerCamera;
         CurrentWorld = currentWorld;
 
         Rotation = Vector3.Forward;
-
-        _graphicsDevice = gd;
     }
 
-    public void Update(GameTime gameTime)
+    public override void Update(GameTime gameTime)
     {
         float deltaTime = (float) gameTime.ElapsedGameTime.TotalSeconds;
 
-        HandleInput(deltaTime);
+        HandleInput();
         Physics(deltaTime);
         UpdateCamera(gameTime);
 
@@ -71,11 +47,15 @@ public class Player : Entity
         PlayerCamera.Update(gameTime);
     }
 
-    public void HandleInput(float deltaTime)
+    public void HandleInput()
     {
-        KeyboardState keyboardState = Keyboard.GetState();
-        MouseState mouseState = Mouse.GetState();
+        Movement();
+        
+        if (InputHandler.IsActionClicked(InputAction.BREAK)) BreakTile();
+    }
 
+    public void Movement()
+    {
         Vector3 forward = new Vector3(Rotation.X, 0, Rotation.Z);
         forward.Normalize();
 
@@ -84,146 +64,24 @@ public class Player : Entity
 
         Vector3 moveDir = Vector3.Zero;
 
-        if (keyboardState.IsKeyDown(Keys.W)) moveDir += forward; 
-        if (keyboardState.IsKeyDown(Keys.S)) moveDir -= forward; 
-        if (keyboardState.IsKeyDown(Keys.D)) moveDir += right; 
-        if (keyboardState.IsKeyDown(Keys.A)) moveDir -= right;
-        if (keyboardState.IsKeyDown(Keys.Space) && OnGround) Velocity = Vector3.Up * JumpVelocity;
+        if (InputHandler.IsActionPressed(InputAction.FORWARD)) moveDir += forward; 
+        if (InputHandler.IsActionPressed(InputAction.BACKWARD)) moveDir -= forward; 
+        if (InputHandler.IsActionPressed(InputAction.RIGHT)) moveDir += right; 
+        if (InputHandler.IsActionPressed(InputAction.LEFT)) moveDir -= right;
+        if (InputHandler.IsActionPressed(InputAction.JUMP) && OnGround) Velocity = Vector3.Up * JumpVelocity;
 
         if (moveDir != Vector3.Zero) moveDir.Normalize();
         Velocity = new Vector3(moveDir.X * WalkSpeed, Velocity.Y, moveDir.Z * WalkSpeed);
     }
 
-    public void Physics(float deltaTime)
+    public void BreakTile()
     {
-        Position += Velocity * deltaTime;
+        MouseState mouseState = Mouse.GetState();
 
-        bool foundGround = false;
-        WorldTile groundTile = null;
-
-        // GRAVITY
-        if (Velocity.Y <= 0) // do ground check if not jumping
+        Vector3? mwPos = CurrentWorld.MouseToWorldPosition(mouseState.Position, PlayerCamera);
+        if (mwPos != null)
         {
-            for (int i = 0; i < 4; i++)
-            {
-                WorldTile tileUnder = CurrentWorld.GetTileAtWorld(
-                    Position + new Vector3(_directions[i].X * HitboxSize.X, -1f, _directions[i].Z * HitboxSize.Z)
-                );
-
-                if (tileUnder != null)
-                {
-                    if (Position.Y < tileUnder.Position.Y + 1.8f) continue;
-                    
-                    int empty = 0;
-                    for (int j = 0; j < MathF.Ceiling(HitboxSize.Y); j++) // check if hitbox.y 
-                    {   
-                        WorldTile tileUnderAbove = CurrentWorld.GetTileAtWorld(
-                            Position + new Vector3(_directions[i].X * HitboxSize.X, 0f + j, _directions[i].Z * HitboxSize.Z)
-                        );
-
-                        if (tileUnderAbove != null) continue;
-                        empty++;
-
-                        if (empty == MathF.Ceiling(HitboxSize.Y))
-                        {
-                            foundGround = true;
-                            groundTile = tileUnder;    
-                            break;
-                        }
-                    }
-                }
-            }
+                CurrentWorld.DestroyTileAtWorld((Vector3)mwPos);
         }
-
-        if (foundGround && groundTile != null)
-        {
-            Position = new Vector3(Position.X, groundTile.Position.Y + 2f, Position.Z);
-            Velocity = new Vector3(Velocity.X, 0, Velocity.Z);
-            
-            OnGround = true;
-        }
-        else
-        {
-            Velocity -= new Vector3(0, Gravity * deltaTime, 0);
-            if (Velocity.Y < MaxFallVel)
-            {
-                Velocity = new Vector3(Velocity.X, MaxFallVel, Velocity.Z);
-            }
-            OnGround = false;
-        }
-
-        // HEAD COLLISION
-        WorldTile aboveTile = CurrentWorld.GetTileAtWorld(
-            Position + new Vector3(0, HitboxSize.Y - 1, 0)
-        );
-
-        if (aboveTile != null) // bonk the head
-        {
-            Position = new Vector3(Position.X, aboveTile.Position.Y - (HitboxSize.Y - 1) - 0.01f, Position.Z);
-            Velocity = new Vector3(Velocity.X, 0, Velocity.Z);
-        }
-
-
-        // X-Z COLLISION
-        float newX = Position.X;
-        float newZ = Position.Z;
-
-        if (MathF.Abs(Velocity.X) > 0f)
-        {
-            for (int i = 0; i < MathF.Ceiling(HitboxSize.Y); i++)
-            {
-                WorldTile tileX = CurrentWorld.GetTileAtWorld(
-                    Position + new Vector3(HitboxSize.X / 2 * MathF.Sign(Velocity.X), -1 + i, 0)
-                ); // topleft is position
-
-                if (tileX != null)
-                {
-                    if (Velocity.X < 0) // right of the tile
-                    {
-                        newX = tileX.Position.X + 1f + HitboxSize.X / 2;
-                    }
-                    else if (Velocity.X > 0) // left of the tile
-                    {
-                        newX = tileX.Position.X - HitboxSize.X / 2;
-                    }
-                }
-            }
-
-            Velocity = new Vector3(0, Velocity.Y, Velocity.Z);
-        }
-
-        Position = new Vector3(newX, Position.Y, Position.Z);
-
-        if (MathF.Abs(Velocity.Z) > 0f)
-        {
-            for (int i = 0; i < MathF.Ceiling(HitboxSize.Y); i++)
-            {
-                WorldTile tileZ = CurrentWorld.GetTileAtWorld(
-                    Position + new Vector3(0, -1 + i, HitboxSize.Z / 2 * MathF.Sign(Velocity.Z))
-                ); // topleft is position
-
-                if (tileZ != null)
-                {
-                    if (Velocity.Z < 0) // back of the tile
-                    {
-                        newZ = tileZ.Position.Z + 1f + HitboxSize.Z / 2;
-                    }
-                    else if (Velocity.Z > 0) // front of the tile
-                    {
-                        newZ = tileZ.Position.Z - HitboxSize.Z / 2;
-                    }
-                }
-       
-            }   
-            
-            Velocity = new Vector3(Velocity.X, Velocity.Y, 0);  
-        }
-        
-        Position = new Vector3(Position.X, Position.Y, newZ);
-    }
-
-    public void Draw()
-    {
-        
     }
 }

@@ -23,10 +23,6 @@ public class GameEngine : Game
     public float WorldTime = 0.7f;
     public int WorldDayLength = 2000;
 
-    private bool _qpressed = false;
-    private bool _epressed = false;
-    private bool _m1pressed = false;
-
     private Vector3 minLightLevel = new Vector3(0.2f, 0.2f, 0.2f);
     private readonly Vector3 baseSkyColor = new Vector3(0.53f, 0.81f, 0.98f);
 
@@ -54,6 +50,7 @@ public class GameEngine : Game
         ModelHandler.Initialize(Content);
         IdRegistry.Initialize();
         TileRegistry.Initialize();
+        InputHandler.Initialize();
 
         _meshBuffer = new MeshBufferPool();
         _gameRenderer = new GameRenderer(GraphicsDevice, _meshBuffer);
@@ -74,11 +71,13 @@ public class GameEngine : Game
 
         GenerateWorld();
         
-        _player = new Player(_camera, _world, GraphicsDevice);
+        _player = new Player(_camera, _world);
     }
 
     protected override void Update(GameTime gameTime)
     {
+        InputHandler.Update();
+
         if (IsActive && IsMouseInWindow())
         {
             _camera.LockMouse = true;
@@ -114,15 +113,10 @@ public class GameEngine : Game
     {        
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        KeyboardState state = Keyboard.GetState();
-        MouseState mouseState = Mouse.GetState();
+        if (InputHandler.IsActionClicked(InputAction.QUIT_GAME)) Exit();
 
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || state.IsKeyDown(Keys.Escape))
-            Exit();
-
-        if (state.IsKeyDown(Keys.Q) && !_qpressed)
+        if (InputHandler.IsActionClicked(InputAction.TOGGLE_WORLDGEN))
         {
-            _qpressed = true;
             if (_worldGen.IsWorldGenPaused())
             {
                 _worldGen.ResumeWorldGen();
@@ -136,14 +130,8 @@ public class GameEngine : Game
             }
         }
 
-        if (state.IsKeyUp(Keys.Q))
+        if (InputHandler.IsActionClicked(InputAction.TOGGLE_LIGHTING))
         {
-            _qpressed = false;
-        }
-
-        if (state.IsKeyDown(Keys.E) && !_epressed)
-        {
-            _epressed = true;
             if (!EffectHandler.MainEffect.LightingEnabled)
             {
                 EffectHandler.MainEffect.LightingEnabled = true;
@@ -155,36 +143,15 @@ public class GameEngine : Game
                 Console.WriteLine("Lighting disabled.");
             }
         }
-
-        if (state.IsKeyUp(Keys.E))
-        {
-            _epressed = false;
-        }
-
-        if (mouseState.LeftButton == ButtonState.Pressed && !_m1pressed)
-        {
-            _m1pressed = true;
-
-            Vector3? mwPos = _world.MouseToWorldPosition(mouseState.Position, _camera);
-            if (mwPos != null)
-            {
-                _world.DestroyTileAtWorld((Vector3)mwPos);
-            }
-        }
-
-        if (mouseState.LeftButton == ButtonState.Released)
-        {
-            _m1pressed = false;
-        }
     
-        if (state.IsKeyDown(Keys.Up))
+        if (InputHandler.IsActionPressed(InputAction.FORWARD_TIME))
         {
             WorldTime += 0.3f * deltaTime;
 
             if (WorldTime > 1) WorldTime = 1;
         }
         
-        if (state.IsKeyDown(Keys.Down))
+        if (InputHandler.IsActionPressed(InputAction.BACKWARD_TIME))
         {
             WorldTime -= 0.3f * deltaTime;
             
