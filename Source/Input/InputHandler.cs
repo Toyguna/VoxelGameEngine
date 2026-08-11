@@ -19,6 +19,13 @@ public static class InputHandler
         
         keybinds.AddMousebind(InputAction.BREAK, MouseButton.LEFT_BUTTON);
         keybinds.AddMousebind(InputAction.PLACE, MouseButton.RIGHT_BUTTON);
+        
+        keybinds.AddKeybind(InputAction.SLOT_1, Keys.D1);
+        keybinds.AddKeybind(InputAction.SLOT_2, Keys.D2);
+        keybinds.AddKeybind(InputAction.SLOT_3, Keys.D3);
+        keybinds.AddKeybind(InputAction.SLOT_4, Keys.D4);
+        keybinds.AddKeybind(InputAction.SLOT_5, Keys.D5);
+        keybinds.AddKeybind(InputAction.SLOT_6, Keys.D6);
 
         keybinds.AddKeybind(InputAction.TOGGLE_LIGHTING, Keys.E);
         keybinds.AddKeybind(InputAction.TOGGLE_WORLDGEN, Keys.Q);

@@ -9,7 +9,7 @@ namespace GameEngine3D;
 public class World
 {
     public readonly int TILE_REACH_DISTANCE = 20;
-    public readonly float RAY_STEPSIZE = 0.1f;
+    public readonly float RAY_STEPSIZE = 0.05f;
 
     private GraphicsDevice _graphicsDevice;
     private MeshBufferPool _meshBuffer;
@@ -167,6 +167,17 @@ public class World
         return true;
     }
 
+    public bool PlaceTileAtWorld(int wx, int wy, int wz, WorldTile tile)
+    {
+        Chunk chunk = GetChunkAtWorld(wx, wy, wz);
+        if (chunk == null) return false;
+
+        chunk.SetTileAtWorld(wx, wy, wz, tile);
+        UpdateChunkMesh(chunk);
+
+        return true;
+    }
+
 /// <summary>
 /// Gets the <b>chunks</b> dictionary.
 /// </summary>
@@ -274,13 +285,185 @@ public class World
 
         Ray ray = new Ray(nearPoint, rayDir);
 
+        Vector3 prevPos;
+
         for (float distance = 0; distance < TILE_REACH_DISTANCE; distance += RAY_STEPSIZE)
         {
+            prevPos = ray.Position;
+
             ray.Position += rayDir * RAY_STEPSIZE;
 
             if (GetTileAtWorld(ray.Position) != null)
             {
                 return ray.Position;
+            }
+        }
+
+        return null;
+    }
+
+    public Vector3? MouseToTileFace(Point mousePos, Camera camera)
+    {
+        Vector3 nearPoint = _graphicsDevice.Viewport.Unproject(
+            new Vector3(mousePos.X, mousePos.Y, 0f),
+            camera.ProjectionMatrix,
+            camera.ViewMatrix,
+            camera.WorldMatrix
+        );
+
+        Vector3 farPoint = _graphicsDevice.Viewport.Unproject(
+            new Vector3(mousePos.X, mousePos.Y, 1f),
+            camera.ProjectionMatrix,
+            camera.ViewMatrix,
+            camera.WorldMatrix
+        );
+
+        Vector3 rayDir = farPoint - nearPoint;
+        rayDir.Normalize();
+
+        Ray ray = new Ray(nearPoint, rayDir);
+
+        Vector3 prevPos;
+
+        for (float distance = 0; distance < TILE_REACH_DISTANCE; distance += RAY_STEPSIZE)
+        {
+            prevPos = ray.Position;
+
+            ray.Position += rayDir * RAY_STEPSIZE;
+
+            if (GetTileAtWorld(ray.Position) != null)
+            {
+                Vector3 hitTile = new Vector3(
+                    (int)Math.Floor(ray.Position.X),
+                    (int)Math.Floor(ray.Position.Y),
+                    (int)Math.Floor(ray.Position.Z)
+                );
+
+                Vector3 prevTile = new Vector3(
+                    (int)Math.Floor(prevPos.X),
+                    (int)Math.Floor(prevPos.Y),
+                    (int)Math.Floor(prevPos.Z)
+                );
+
+                Vector3 rawNormal = new Vector3(
+                    prevTile.X - hitTile.X,
+                    prevTile.Y - hitTile.Y,
+                    prevTile.Z - hitTile.Z
+                );
+
+                Vector3 faceNormal = Vector3.Zero;
+
+                float absX = Math.Abs(rawNormal.X);
+                float absY = Math.Abs(rawNormal.Y);
+                float absZ = Math.Abs(rawNormal.Z);
+
+                if (absX > absY && absX > absZ)
+                {
+                    faceNormal.X = Math.Sign(rawNormal.X);
+                }
+                else if (absY > absX && absY > absZ)
+                {
+                    faceNormal.Y = Math.Sign(rawNormal.Y);
+                }
+                else if (absZ > absX && absZ > absY)
+                {
+                    faceNormal.Z = Math.Sign(rawNormal.Z);
+                }
+                else
+                {
+                    if (Math.Abs(rayDir.X) > Math.Abs(rayDir.Y) && Math.Abs(rayDir.X) > Math.Abs(rayDir.Z))
+                        faceNormal.X = -Math.Sign(rayDir.X);
+                    else if (Math.Abs(rayDir.Y) > Math.Abs(rayDir.X) && Math.Abs(rayDir.Y) > Math.Abs(rayDir.Z))
+                        faceNormal.Y = -Math.Sign(rayDir.Y);
+                    else
+                        faceNormal.Z = -Math.Sign(rayDir.Z);
+                }
+
+                return faceNormal;
+            }
+        }
+
+        return null;
+    }
+
+    public RaycastHit MouseToWorldRay(Point mousePos, Camera camera)
+    {
+        Vector3 nearPoint = _graphicsDevice.Viewport.Unproject(
+            new Vector3(mousePos.X, mousePos.Y, 0f),
+            camera.ProjectionMatrix,
+            camera.ViewMatrix,
+            camera.WorldMatrix
+        );
+
+        Vector3 farPoint = _graphicsDevice.Viewport.Unproject(
+            new Vector3(mousePos.X, mousePos.Y, 1f),
+            camera.ProjectionMatrix,
+            camera.ViewMatrix,
+            camera.WorldMatrix
+        );
+
+        Vector3 rayDir = farPoint - nearPoint;
+        rayDir.Normalize();
+
+        Ray ray = new Ray(nearPoint, rayDir);
+
+        Vector3 prevPos;
+
+        for (float distance = 0; distance < TILE_REACH_DISTANCE; distance += RAY_STEPSIZE)
+        {
+            prevPos = ray.Position;
+
+            ray.Position += rayDir * RAY_STEPSIZE;
+
+            if (GetTileAtWorld(ray.Position) != null)
+            {
+                Vector3 hitTile = new Vector3(
+                    (int)Math.Floor(ray.Position.X),
+                    (int)Math.Floor(ray.Position.Y),
+                    (int)Math.Floor(ray.Position.Z)
+                );
+
+                Vector3 prevTile = new Vector3(
+                    (int)Math.Floor(prevPos.X),
+                    (int)Math.Floor(prevPos.Y),
+                    (int)Math.Floor(prevPos.Z)
+                );
+
+                Vector3 rawNormal = new Vector3(
+                    prevTile.X - hitTile.X,
+                    prevTile.Y - hitTile.Y,
+                    prevTile.Z - hitTile.Z
+                );
+
+                Vector3 faceNormal = Vector3.Zero;
+
+                float absX = Math.Abs(rawNormal.X);
+                float absY = Math.Abs(rawNormal.Y);
+                float absZ = Math.Abs(rawNormal.Z);
+
+                if (absX > absY && absX > absZ)
+                {
+                    faceNormal.X = Math.Sign(rawNormal.X);
+                }
+                else if (absY > absX && absY > absZ)
+                {
+                    faceNormal.Y = Math.Sign(rawNormal.Y);
+                }
+                else if (absZ > absX && absZ > absY)
+                {
+                    faceNormal.Z = Math.Sign(rawNormal.Z);
+                }
+                else
+                {
+                    if (Math.Abs(rayDir.X) > Math.Abs(rayDir.Y) && Math.Abs(rayDir.X) > Math.Abs(rayDir.Z))
+                        faceNormal.X = -Math.Sign(rayDir.X);
+                    else if (Math.Abs(rayDir.Y) > Math.Abs(rayDir.X) && Math.Abs(rayDir.Y) > Math.Abs(rayDir.Z))
+                        faceNormal.Y = -Math.Sign(rayDir.Y);
+                    else
+                        faceNormal.Z = -Math.Sign(rayDir.Z);
+                }
+
+                return new RaycastHit(ray.Position, faceNormal);
             }
         }
 

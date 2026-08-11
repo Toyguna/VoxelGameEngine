@@ -164,7 +164,7 @@ public class GameEngine : Game
         _worldGen = new WorldGenerator();
 
         _world = new World(GraphicsDevice, _meshBuffer);
-        _worldGen.GenerateNewWorld(WorldGenType.FLAT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
+        _worldGen.GenerateNewWorld(WorldGenType.DEFAULT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
     }
 
     private void CalculateFps(GameTime gameTime)
