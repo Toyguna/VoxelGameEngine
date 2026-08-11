@@ -81,6 +81,7 @@ public class GameEngine : Game
     {
         if (IsActive && IsMouseInWindow())
         {
+            _camera.LockMouse = true;
             IsMouseVisible = !_camera.LockMouse;
 
             HandleInput(gameTime);

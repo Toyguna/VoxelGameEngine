@@ -1,5 +1,4 @@
 using System;
-using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -55,7 +54,7 @@ public class Camera
         );
     }
 
-    public void CameraRotation()
+    public void CameraRotation(float deltaTime)
     {
         MouseState mouseState = Mouse.GetState();
 
@@ -69,17 +68,18 @@ public class Camera
             else
             {
                 Point mousePos = mouseState.Position;
+                Point center = new Point(_graphicsDevice.Viewport.Width / 2, _graphicsDevice.Viewport.Height / 2);
+                
+                float diffX = mousePos.X - center.X;
+                float diffY = - mousePos.Y + center.Y;
 
-                float diffX = mousePos.X - _graphicsDevice.Viewport.Width / 2;
-                float diffY = - mousePos.Y + _graphicsDevice.Viewport.Height / 2;
-
-                Pitch += diffY * MouseSensitivity;
                 Yaw += diffX * MouseSensitivity;
+                Pitch += diffY * MouseSensitivity;
             
-                Mouse.SetPosition(_graphicsDevice.Viewport.Width / 2, _graphicsDevice.Viewport.Height / 2);          
+                Mouse.SetPosition(center.X, center.Y);          
             }
         }
-
+        
         Pitch = Math.Clamp(Pitch, -89, 89);
         float radPitch = MathHelper.ToRadians(Pitch);
         float radYaw = MathHelper.ToRadians(Yaw);
@@ -122,7 +122,7 @@ public class Camera
             CameraMovement(deltaTime);
         }
         
-        CameraRotation();
+        CameraRotation(deltaTime);
 
         Target = Position + Direction;
 
