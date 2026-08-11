@@ -22,6 +22,7 @@ public class Camera
     public float Yaw = -90f; // right - left
 
     public bool LockMouse = true;
+    public bool FreeCam = false;
     
     public Matrix ProjectionMatrix { get; set; }
     public Matrix ViewMatrix { get; set; }
@@ -116,7 +117,11 @@ public class Camera
     {
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        CameraMovement(deltaTime);
+        if (FreeCam)
+        {
+            CameraMovement(deltaTime);
+        }
+        
         CameraRotation();
 
         Target = Position + Direction;

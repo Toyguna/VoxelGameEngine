@@ -10,6 +10,8 @@ public class WorldTile
     public Vector3 Rotation { get; set; } = Vector3.Zero;
     public Vector3 Scale { get; set; } = Vector3.One;
 
+    public Rectangle Rect { get; private set; }
+
     public Color TileColor { get; set; } = Color.White;
 
     public TileData TileData { get; private set; }

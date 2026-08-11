@@ -217,6 +217,8 @@ public class World
         effect.View = camera.ViewMatrix;
         effect.Projection = camera.ProjectionMatrix;
         
+        Console.WriteLine(tile.Position);
+
         foreach (var pass in effect.CurrentTechnique.Passes)
         {
             pass.Apply();
