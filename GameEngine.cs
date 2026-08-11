@@ -8,23 +8,27 @@ namespace GameEngine3D;
 public class GameEngine : Game
 {
     private GraphicsDeviceManager _graphics;
-
     private GameRenderer _gameRenderer;
 
     private Camera _camera;
     private WorldGenerator _worldGen;
     private World _world;
     private MeshBufferPool _meshBuffer;
+    private Player _player;
 
     public int FrameRate { get; private set; } = 0;
     private TimeSpan _elapsedTime = TimeSpan.Zero;
     private int _frameCounter = 0;
 
+    public float WorldTime = 0.7f;
+    public int WorldDayLength = 2000;
+
     private bool _qpressed = false;
     private bool _epressed = false;
-    private bool _altpressed = false;
-    private bool _altlock = false;
     private bool _m1pressed = false;
+
+    private Vector3 minLightLevel = new Vector3(0.2f, 0.2f, 0.2f);
+    private readonly Vector3 baseSkyColor = new Vector3(0.53f, 0.81f, 0.98f);
 
     public GameEngine()
     {
@@ -45,14 +49,15 @@ public class GameEngine : Game
         GraphicsDevice.BlendState = BlendState.Opaque;
         GraphicsDevice.SamplerStates[0] = SamplerState.PointClamp;
 
+        EffectHandler.Initialize(GraphicsDevice);
+        TextureHandler.Initialize(GraphicsDevice);
+        ModelHandler.Initialize(Content);
+        IdRegistry.Initialize();
+        TileRegistry.Initialize();
+
         _meshBuffer = new MeshBufferPool();
         _gameRenderer = new GameRenderer(GraphicsDevice, _meshBuffer);
         _camera = new Camera(GraphicsDevice);
-        
-        EffectHandler.Initialize(GraphicsDevice);
-        TextureHandler.Initialize(GraphicsDevice);
-        IdRegistry.Initialize();
-        TileRegistry.Initialize();
 
         base.Initialize();
     }
@@ -60,6 +65,7 @@ public class GameEngine : Game
     protected override void LoadContent()
     {
         TextureHandler.LoadContent();
+        ModelHandler.LoadModels();
 
         TileRegistry.AddTexturesToTiles();
 
@@ -67,6 +73,8 @@ public class GameEngine : Game
         EffectHandler.MainEffect.TextureEnabled = true;
 
         GenerateWorld();
+        
+        _player = new Player(_camera, _world, GraphicsDevice);
     }
 
     protected override void Update(GameTime gameTime)
@@ -77,10 +85,16 @@ public class GameEngine : Game
 
             HandleInput(gameTime);
 
-            _camera.Update(gameTime);
+            _player.Update(gameTime);
             _world.Update(gameTime, _camera);
         }
+        else
+        {
+            _camera.LockMouse = false;
+            IsMouseVisible = true;
+        }
 
+        UpdateSkyLight();
         UpdateTitle();
 
         base.Update(gameTime);
@@ -88,17 +102,17 @@ public class GameEngine : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
+        GraphicsDevice.Clear(new Color(baseSkyColor * WorldTime));
         
         CalculateFps(gameTime);
 
         _gameRenderer.DrawWorld(_world, _camera);
-
-        base.Draw(gameTime);
     }
 
     private void HandleInput(GameTime gameTime)
-    {
+    {        
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
         KeyboardState state = Keyboard.GetState();
         MouseState mouseState = Mouse.GetState();
 
@@ -146,28 +160,6 @@ public class GameEngine : Game
             _epressed = false;
         }
 
-        if (!_altlock)
-        {
-            _camera.LockMouse = mouseState.RightButton == ButtonState.Pressed;
-            if (!_camera.LockMouse == true)
-            {
-                _camera._previousLockMouse = false;
-            }
-        }
-
-        if (state.IsKeyDown(Keys.LeftAlt) && !_altpressed)
-        {
-            _altpressed = true;
-            _camera.LockMouse = !_camera.LockMouse;
-
-            _altlock = _camera.LockMouse;
-        }
-
-        if (state.IsKeyUp(Keys.LeftAlt))
-        {
-            _altpressed = false;
-        }
-
         if (mouseState.LeftButton == ButtonState.Pressed && !_m1pressed)
         {
             _m1pressed = true;
@@ -183,6 +175,20 @@ public class GameEngine : Game
         {
             _m1pressed = false;
         }
+    
+        if (state.IsKeyDown(Keys.Up))
+        {
+            WorldTime += 0.3f * deltaTime;
+
+            if (WorldTime > 1) WorldTime = 1;
+        }
+        
+        if (state.IsKeyDown(Keys.Down))
+        {
+            WorldTime -= 0.3f * deltaTime;
+            
+            if (WorldTime < 0f) WorldTime = 0f;
+        }
     }
 
     private void GenerateWorld()
@@ -190,7 +196,7 @@ public class GameEngine : Game
         _worldGen = new WorldGenerator();
 
         _world = new World(GraphicsDevice, _meshBuffer);
-        _worldGen.GenerateNewWorld(WorldGenType.DEFAULT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
+        _worldGen.GenerateNewWorld(WorldGenType.FLAT, new Vector2(1000, 1000), _world, 11293192, _camera, _meshBuffer);
     }
 
     private void CalculateFps(GameTime gameTime)
@@ -219,10 +225,16 @@ public class GameEngine : Game
         Vector3 camChunkGridPos = _camera.GetChunkGridPosition();
 
         Window.Title = $"Voxel Engine | FPS: {FrameRate} | " +
-         $"Pos: ({_camera.Position.X:F2}, {_camera.Position.Y:F2}, {_camera.Position.Z:F2}) " +
-         $"Rot: ({_camera.Direction.X:F2}, {_camera.Direction.Y:F2}, {_camera.Direction.Z:F2}) | " +
+         $"Pos: ({_player.Position.X:F2}, {_player.Position.Y:F2}, {_player.Position.Z:F2}) " +
+         $"Rot: ({_player.Rotation.X:F2}, {_player.Rotation.Y:F2}, {_player.Rotation.Z:F2}) | " +
          $"Chunk Local: ({camChunkLocalPos.X}, {camChunkLocalPos.Y}, {camChunkLocalPos.Z}) " +
          $"Chunk Grid: ({camChunkGridPos.X}, {camChunkGridPos.Y}, {camChunkGridPos.Z})";
+    }
+
+    private void UpdateSkyLight()
+    {
+        EffectHandler.MainEffect.DirectionalLight0.DiffuseColor = Vector3.One * WorldTime + minLightLevel;
+        EffectHandler.MainEffect.DirectionalLight1.DiffuseColor = Vector3.One * WorldTime / 2 + minLightLevel / 2;
     }
 
     private bool IsMouseInWindow()
